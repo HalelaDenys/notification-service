@@ -46,10 +46,7 @@ class LoggingConfig(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(
-            BASE_DIR / ".env.exapmle",
-            BASE_DIR / ".env",
-        ),
+        env_file=(BASE_DIR / ".env",),
         env_prefix="APP_CONFIG__",
         env_nested_delimiter="__",
         case_sensitive=False,
