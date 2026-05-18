@@ -5,6 +5,26 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi[all]>=0.136.1",
     "faststream[redis]>=0.6.7",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
     "redis>=7.4.0",
     "uvicorn>=0.47.0",
 ]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.0",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.13",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "SIM"]
+ignore = []
