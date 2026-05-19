@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from api import main_router
 from core import settings
+from infrastructure import broker
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -16,7 +17,11 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logging.info("Starting lifespan")
+    await broker.start()
+
     yield
+
+    await broker.stop()
     logging.info("Ending lifespan")
 
 
