@@ -44,6 +44,32 @@ class LoggingConfig(BaseModel):
         return logging.getLevelNamesMapping()[self.log_level.upper()]
 
 
+class SMTPConfig(BaseModel):
+    """
+    Dev configuration. With test data for Maildev.
+    To work with SMTP, use:
+        SMTPS (implicit TLS):
+            port 465
+            use_tls=True
+            start_tls=False
+        STARTTLS (explicit upgrade)
+            port 587
+            use_tls=False
+            start_tls=True
+    """
+
+    host: str = "localhost"  # dev host
+    port: int = 1025  # dev port
+    username: str | None = None
+    password: str | None = None
+
+    use_tls: bool = False
+    start_tls: bool = True
+
+    sender: str = "admin@example.com"
+    timeout: float = 10.0
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(BASE_DIR / ".env",),
@@ -55,6 +81,7 @@ class Settings(BaseSettings):
     redis: RedisConfig
     midd: MiddlewareConfig
     logging: LoggingConfig = LoggingConfig()
+    smtp: SMTPConfig = SMTPConfig()
 
 
 settings = Settings()

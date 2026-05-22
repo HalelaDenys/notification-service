@@ -15,6 +15,10 @@ class BaseNotificationSchema(BaseModel):
 class EmailNotificationSchema(BaseNotificationSchema):
     type: Literal["email"]
     recipient: EmailStr
+    subject: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=150),
+    ]
 
 
 class TelegramNotificationSchema(BaseNotificationSchema):

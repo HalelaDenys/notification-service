@@ -3,6 +3,7 @@ name = "notification-service"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "aiosmtplib>=5.1.0",
     "fastapi[all]>=0.136.1",
     "faststream[redis]>=0.6.7",
     "pydantic>=2.13.4",

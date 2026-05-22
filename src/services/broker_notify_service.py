@@ -15,7 +15,7 @@ class BrokerNotifyService:
         try:
             await self.broker.publish(
                 data,
-                stream="notifications",
+                stream=f"notifications.{data.type}",
             )
         except FastStreamException as exc:
             logger.error("Failed to publish lead to Redis Stream: %s", exc)
