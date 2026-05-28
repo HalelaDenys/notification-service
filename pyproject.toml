@@ -17,6 +17,8 @@ dependencies = [
 dev = [
     "black>=26.5.0",
     "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.15.13",
 ]
 
@@ -30,3 +32,8 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "SIM"]
 ignore = []
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"

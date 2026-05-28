@@ -24,8 +24,6 @@ class STMPNotifyService:
         if context is None:
             raise ValueError("Context is required for HTML rendering")
 
-        context = data.context
-
         tmp = template.get_template("email/notification.html")
 
         return tmp.render(
