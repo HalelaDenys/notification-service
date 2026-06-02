@@ -7,7 +7,7 @@ from infrastructure.smtp.client import SMTPClient
 
 
 class TestSMTPClient:
-    def test_smtp_client_rejects_tls_and_start_tls_together(self):
+    def test_rejects_tls_and_start_tls_together(self):
         with pytest.raises(
             ValueError, match="use_tls and start_tls cannot both be enabled"
         ):
