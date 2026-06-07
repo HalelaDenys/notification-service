@@ -84,3 +84,9 @@ NotificationRequestSchema = Annotated[
     EmailNotificationSchema | TelegramNotificationSchema,
     Field(discriminator="type"),
 ]
+
+
+class DLQSchema(BaseModel):
+    recipient: EmailStr
+    error: str
+    payload: dict

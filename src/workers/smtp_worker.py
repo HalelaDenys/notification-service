@@ -5,9 +5,16 @@ import socket
 from faststream import FastStream
 from faststream.redis import StreamSub
 
+from core import settings
+from core.exceptions import RetryError
 from infrastructure import create_redis_broker
-from schemas.notify_schema import EmailNotificationSchema
+from schemas.notify_schema import DLQSchema, EmailNotificationSchema
 from services.factory import create_stmp_notify_service
+
+logging.basicConfig(
+    level=settings.logging.log_level_value,
+    format=settings.logging.log_format,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +39,26 @@ service = create_stmp_notify_service()
     ),
 )
 async def smtp_worker(data: EmailNotificationSchema) -> None:
-    logger.info("Received email for %s", data.recipient)
+    try:
+        await service.send(data)
 
-    await service.send(data)
+    except RetryError as exc:
+        logger.error(
+            "Email delivery failed after retries: recipient=%s",
+            data.recipient,
+        )
 
-    logger.info("Email processed for %s", data.recipient)
+        try:
+            await broker.publish(
+                DLQSchema(
+                    recipient=data.recipient, error=str(exc), payload=data.model_dump()
+                ),
+                stream="notifications.email.dlq",
+            )
+        except Exception:
+            logger.exception("Failed to publish to DLQ: recipient=%s", data.recipient)
+            raise
+
+    except Exception:
+        logger.exception("Unexpected error")
+        raise
