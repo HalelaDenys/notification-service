@@ -1,5 +1,6 @@
 import pytest
 
+from core.retry_policy import RetryPolicy
 from schemas.notify_schema import EmailContextSchema, EmailNotificationSchema
 from services.stmp_notiy_service import STMPNotifyService
 
@@ -36,8 +37,13 @@ def fake_notify_service():
 
 # SMTPNotifyService fixture
 @pytest.fixture()
-def smtp_service(fake_smtp_client):
-    return STMPNotifyService(smtp_client=fake_smtp_client)
+def retry_policy():
+    return RetryPolicy(max_attempts=1, base_delay=0, jitter=False)
+
+
+@pytest.fixture()
+def smtp_service(fake_smtp_client, retry_policy):
+    return STMPNotifyService(smtp_client=fake_smtp_client, retry_policy=retry_policy)
 
 
 @pytest.fixture()

@@ -4,6 +4,7 @@ from email.message import EmailMessage
 import aiosmtplib
 
 from core import settings
+from core.exceptions import SMTPClientException
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +62,10 @@ class SMTPClient:
                 start_tls=self._start_tls,
                 timeout=self._timeout,
             )
-        except (aiosmtplib.SMTPException, OSError):
-            logger.exception(
-                "Email send failed: recipient=%s host=%s port=%s",
-                recipient,
-                self._host,
-                self._port,
-            )
-            raise
+        except (aiosmtplib.SMTPException, OSError) as exc:
+            raise SMTPClientException(
+                f"SMTP send failed: {self._host}:{self._port}"
+            ) from exc
 
 
 def create_smtp_client() -> SMTPClient:
