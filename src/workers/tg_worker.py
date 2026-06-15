@@ -9,9 +9,9 @@ from core import settings
 from core.exceptions import RetryError
 from core.utils import get_error_cause
 from infrastructure import create_redis_broker
-from schemas.notify_schema import EmailNotificationSchema
+from schemas.notify_schema import TelegramNotificationSchema
 from services.dlq_service import DLQService
-from services.factory import create_smtp_notify_service
+from services.factory import create_telegram_notify_service
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -20,15 +20,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-STREAM_NAME = "notifications.email"
-GROUP_NAME = "smtp-workers"
-CONSUMER_NAME = f"smtp-{socket.gethostname()}-{os.getpid()}"
+STREAM_NAME = "notifications.telegram"
+GROUP_NAME = "tg-workers"
+CONSUMER_NAME = f"tg-{socket.gethostname()}-{os.getpid()}"
 
 broker = create_redis_broker()
-
 app = FastStream(broker)
 
-service = create_smtp_notify_service()
+service = create_telegram_notify_service()
 dlq_service = DLQService(broker=broker)
 
 
@@ -41,14 +40,14 @@ dlq_service = DLQService(broker=broker)
         polling_interval=1000,
     ),
 )
-async def smtp_worker(data: EmailNotificationSchema) -> None:
+async def tg_worker(data: TelegramNotificationSchema) -> None:
     try:
         await service.send(data)
 
     except RetryError as exc:
         logger.error(
-            "Email delivery failed after retries: recipient=%s",
-            data.recipient,
+            "Telegram delivery failed after retries: chat_id=%s error=%s cause=%s",
+            data.chat_id,
             exc,
             get_error_cause(exc),
             exc_info=True,
@@ -59,9 +58,9 @@ async def smtp_worker(data: EmailNotificationSchema) -> None:
                 data=data, ecx=exc, stream_name=STREAM_NAME
             )
         except Exception:
-            logger.exception("Failed to publish to DLQ: recipient=%s", data.recipient)
+            logger.exception("Failed to publish to DLQ: chat_id=%s", data.chat_id)
             raise
 
     except Exception:
-        logger.exception("Unexpected smtp worker error: chat_id=%s", data.recipient)
+        logger.exception("Unexpected telegram worker error: chat_id=%s", data.chat_id)
         raise
