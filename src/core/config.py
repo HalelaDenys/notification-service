@@ -70,6 +70,11 @@ class SMTPConfig(BaseModel):
     timeout: float = 10.0
 
 
+class TelegramConfig(BaseModel):
+    token: str = "8279055211:AAHh5GGWUkepFrio0xtWrOT8iyiIa515UWg"
+    admin_chat_id: int
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(BASE_DIR / ".env",),
@@ -80,6 +85,7 @@ class Settings(BaseSettings):
 
     redis: RedisConfig
     midd: MiddlewareConfig
+    tg: TelegramConfig
     logging: LoggingConfig = LoggingConfig()
     smtp: SMTPConfig = SMTPConfig()
 

@@ -3,7 +3,7 @@ from infrastructure import SMTPClient, template
 from schemas.notify_schema import EmailNotificationSchema
 
 
-class STMPNotifyService:
+class SMTPNotifyService:
     def __init__(self, smtp_client: SMTPClient, retry_policy: RetryPolicy):
         self._smtp_client = smtp_client
         self._retry_policy = retry_policy
