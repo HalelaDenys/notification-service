@@ -4,3 +4,7 @@ class RetryError(Exception):
 
 class SMTPClientException(Exception):
     pass
+
+
+class TelegramClientException(Exception):
+    pass
