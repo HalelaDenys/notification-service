@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 import aiosmtplib
 import pytest
 
+from core.exceptions import SMTPClientException
 from infrastructure.smtp.client import SMTPClient
 
 
@@ -104,12 +105,14 @@ class TestSMTPClient:
     ):
         monkeypatch.setattr(aiosmtplib, "send", AsyncMock(side_effect=error))
 
-        with pytest.raises(type(error), match=str(error)):
+        with pytest.raises(SMTPClientException, match="SMTP send failed") as exc_info:
             await smtp_client.send_email(
                 recipient="test@example.com",
                 subject="test error subject",
                 plain_content="test error plain content",
             )
+
+        assert isinstance(exc_info.value.__cause__, type(error))
 
     @pytest.mark.asyncio()
     async def test_send_email_raises_on_type_error(

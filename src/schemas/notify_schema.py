@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -7,6 +8,7 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
+    model_validator,
 )
 
 
@@ -65,22 +67,51 @@ class EmailNotificationSchema(BaseNotificationSchema):
     )
 
 
+class ReplyKeyboardMarkupSchema(BaseModel):
+    keyboard: list[list[str]]
+    resize_keyboard: bool = True
+    one_time_keyboard: bool = True
+    selective: bool = True
+
+
+class InlineKeyboardButtonSchema(BaseModel):
+    text: str
+    callback_data: Annotated[str | None, Field(max_length=64)] = None
+    url: str | None = None
+    # web_app: dict | None = None
+
+    @model_validator(mode="after")
+    def validate_callback_and_url(self):
+        if self.callback_data and self.url:
+            raise ValueError("Button cannot have both callback_data and url")
+        if not self.callback_data and not self.url:
+            raise ValueError("Button must have either callback_data or url")
+        return self
+
+
+class InlineKeyboardMarkupSchema(BaseModel):
+    inline_keyboard: list[list[InlineKeyboardButtonSchema]]
+
+
 class TelegramNotificationSchema(BaseNotificationSchema):
     type: Literal["telegram"]
     chat_id: Annotated[int, Field(gt=0, description="Chat ID")]
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "type": "telegram",
-                "chat_id": 123456789,
-                "message": "Hello from Telegram",
-            }
-        }
-    )
+    reply_markup: InlineKeyboardMarkupSchema | ReplyKeyboardMarkupSchema | None = None
 
 
 NotificationRequestSchema = Annotated[
     EmailNotificationSchema | TelegramNotificationSchema,
     Field(discriminator="type"),
 ]
+
+
+class DLQSchema(BaseModel):
+    recipient: str
+    source_stream: str
+    error_type: str
+    error: str
+    error_cause: str | None = None
+    payload: dict
+    failed_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+    )
