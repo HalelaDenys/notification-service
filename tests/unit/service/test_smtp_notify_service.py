@@ -61,7 +61,7 @@ class TestSTMPNotifyService:
         mock_template = MagicMock()
         mock_template.render.return_value = "<h1>Rendered</h1>"
 
-        with patch("services.stmp_notiy_service.template") as mock_tpl:
+        with patch("services.smtp_notify_service.template") as mock_tpl:
             mock_tpl.get_template.return_value = mock_template
             result = smtp_service._render_html(email_payload_with_content)
 
