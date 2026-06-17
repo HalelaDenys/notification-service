@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     Field,
+    HttpUrl,
     StringConstraints,
     field_validator,
     model_validator,
@@ -74,18 +75,29 @@ class ReplyKeyboardMarkupSchema(BaseModel):
     selective: bool = True
 
 
+class TelegramWebAppSchema(BaseModel):
+    url: HttpUrl
+
+
 class InlineKeyboardButtonSchema(BaseModel):
     text: str
     callback_data: Annotated[str | None, Field(max_length=64)] = None
-    url: str | None = None
-    # web_app: dict | None = None
+    url: HttpUrl | None = None
+    web_app: TelegramWebAppSchema | None = None
 
     @model_validator(mode="after")
-    def validate_callback_and_url(self):
-        if self.callback_data and self.url:
-            raise ValueError("Button cannot have both callback_data and url")
-        if not self.callback_data and not self.url:
-            raise ValueError("Button must have either callback_data or url")
+    def validate_button(self):
+        actions = [
+            self.callback_data,
+            self.url,
+            self.web_app,
+        ]
+
+        if sum(action is not None for action in actions) != 1:
+            raise ValueError(
+                "Button must have exactly one action: callback_data, url or web_app"
+            )
+
         return self
 
 
