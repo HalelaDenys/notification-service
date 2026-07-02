@@ -7,8 +7,3 @@ main_router = APIRouter(
 )
 
 main_router.include_router(router)
-
-
-@main_router.get("")
-async def health() -> dict:
-    return {"status": "ok"}

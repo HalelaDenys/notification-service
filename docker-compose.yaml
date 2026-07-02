@@ -1,4 +1,30 @@
+x-notify-common: &notify-common
+  image: notification-service:latest
+  working_dir: /app/src
+  env_file:
+    - .env
+  environment: &worker-environment
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONUNBUFFERED: "1"
+  depends_on:
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
+  api:
+    <<: *notify-common
+    build: .
+    container_name: notify_api
+    depends_on:
+      redis:
+        condition: service_healthy
+#    ports:
+#      - "8000:8000"
+    expose:
+      - "8000"
+    command: ["uv", "run", "python", "main.py"]
+
   redis:
     image: redis:7-alpine
     ports:
@@ -23,6 +49,38 @@ services:
       driver: "json-file"
       options:
         max-size: "1m"
+
+
+  smtp-worker:
+
+    <<: *notify-common
+    environment:
+      <<: *worker-environment
+      APP_CONFIG__SMTP__HOST: maildev
+    depends_on:
+      redis:
+        condition: service_healthy
+      maildev:
+        condition: service_started
+    command: [ "faststream", "run", "workers.smtp_worker:app" ]
+
+
+  tg-worker:
+    <<: *notify-common
+    command: ["faststream", "run", "workers.tg_worker:app"]
+
+  dlq-worker:
+    <<: *notify-common
+    command: ["faststream", "run", "workers.dlq_worker:app"]
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
 
 volumes:
   redis_data:
