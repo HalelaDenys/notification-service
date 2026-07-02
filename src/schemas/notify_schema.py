@@ -41,7 +41,7 @@ class EmailContextSchema(BaseModel):
 
 
 class EmailNotificationSchema(BaseNotificationSchema):
-    type: Literal["email"]
+    type: Literal["smtp"]
     # template_type: Literal["notification", "marketing", "system"]
     recipient: EmailStr
     subject: Annotated[
@@ -53,7 +53,7 @@ class EmailNotificationSchema(BaseNotificationSchema):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "type": "email",
+                "type": "smtp",
                 "recipient": "user@example.com",
                 "subject": "Account updated",
                 "message": "Your account was updated successfully",
@@ -117,13 +117,11 @@ NotificationRequestSchema = Annotated[
 ]
 
 
-class DLQSchema(BaseModel):
-    recipient: str
-    source_stream: str
-    error_type: str
+class DLQMessageSchema(BaseModel):
+    original_data: dict
     error: str
-    error_cause: str | None = None
-    payload: dict
+    error_cause: str
+    source_stream: str
     failed_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
     )

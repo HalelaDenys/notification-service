@@ -20,7 +20,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-STREAM_NAME = "notifications.email"
+STREAM_NAME = "notifications.smtp"
 GROUP_NAME = "smtp-workers"
 CONSUMER_NAME = f"smtp-{socket.gethostname()}-{os.getpid()}"
 
