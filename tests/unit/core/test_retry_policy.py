@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.exceptions import RetryError
+from core.exceptions import RetryException
 from core.retry_policy import RetryPolicy
 
 
@@ -47,7 +47,7 @@ class TestRetryPolicy:
             attempts += 1
             raise ValueError("error")
 
-        with pytest.raises(RetryError) as exc_info:
+        with pytest.raises(RetryException) as exc_info:
             await retry_policy.execute(handler)
 
         assert attempts == 3

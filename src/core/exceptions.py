@@ -1,10 +1,29 @@
-class RetryError(Exception):
-    pass
+class ApplicationException(Exception):
+    """Base exception for the application."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
-class SMTPClientException(Exception):
-    pass
+class RetryException(ApplicationException):
+    """Raised when all retry attempts are exhausted."""
 
 
-class TelegramClientException(Exception):
-    pass
+class SMTPException(ApplicationException):
+    """Base SMTP exception."""
+
+
+class SMTPClientException(SMTPException):
+    """SMTP client error."""
+
+
+class TelegramException(ApplicationException):
+    """Base Telegram exception."""
+
+
+class TelegramClientException(TelegramException):
+    """Telegram API/client error."""
+
+
+class TGAdminChatIdException(TelegramException):
+    """Admin chat ID is not configured or invalid."""

@@ -6,7 +6,7 @@ from faststream import FastStream
 from faststream.redis import StreamSub
 
 from core import settings
-from core.exceptions import RetryError
+from core.exceptions import RetryException
 from core.utils import get_error_cause
 from infrastructure import create_redis_broker
 from schemas.notify_schema import EmailNotificationSchema
@@ -25,7 +25,6 @@ GROUP_NAME = "smtp-workers"
 CONSUMER_NAME = f"smtp-{socket.gethostname()}-{os.getpid()}"
 
 broker = create_redis_broker()
-
 app = FastStream(broker)
 
 service = create_smtp_notify_service()
@@ -45,11 +44,10 @@ async def smtp_worker(data: EmailNotificationSchema) -> None:
     try:
         await service.send(data)
 
-    except RetryError as exc:
+    except RetryException as exc:
         logger.error(
-            "Email delivery failed after retries: recipient=%s",
+            "Email delivery failed after retries: recipient=%s cause=%s",
             data.recipient,
-            exc,
             get_error_cause(exc),
             exc_info=True,
         )

@@ -73,6 +73,7 @@ class SMTPConfig(BaseModel):
 class TelegramConfig(BaseModel):
     token: str = "8279055211:AAHh5GGWUkepFrio0xtWrOT8iyiIa515UWg"
     admin_chat_id: int
+    admin_notify: bool = False
 
 
 class Settings(BaseSettings):
