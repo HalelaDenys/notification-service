@@ -9,6 +9,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 LOG_DEFAULT_FORMAT = (
     "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
 )
+DATA_DIR = BASE_DIR / Path("data/uploads")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB
+ALLOWED_CONTENT_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+}
 
 
 class MiddlewareConfig(BaseModel):
@@ -71,9 +82,13 @@ class SMTPConfig(BaseModel):
 
 
 class TelegramConfig(BaseModel):
-    token: str = "8279055211:AAHh5GGWUkepFrio0xtWrOT8iyiIa515UWg"
+    bot_token: str = ""
     admin_chat_id: int
     admin_notify: bool = False
+
+
+class SlackConfig(BaseModel):
+    bot_token: str = ""
 
 
 class Settings(BaseSettings):
@@ -87,6 +102,7 @@ class Settings(BaseSettings):
     redis: RedisConfig
     midd: MiddlewareConfig
     tg: TelegramConfig
+    slack: SlackConfig
     logging: LoggingConfig = LoggingConfig()
     smtp: SMTPConfig = SMTPConfig()
 
