@@ -64,7 +64,7 @@ class SMTPClient:
             )
         except (aiosmtplib.SMTPException, OSError) as exc:
             raise SMTPClientException(
-                f"SMTP send failed: {self._host}:{self._port}"
+                f"Failed to send email to '{recipient}' "
             ) from exc
 
 

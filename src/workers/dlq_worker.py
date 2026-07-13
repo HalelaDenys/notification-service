@@ -5,8 +5,10 @@ from faststream import FastStream
 from faststream.redis import StreamSub
 
 from core import settings
+from core.exceptions import ApplicationException
 from infrastructure import create_redis_broker
 from schemas.notify_schema import DLQMessageSchema
+from services.factory import create_telegram_notify_service
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 broker = create_redis_broker()
 app = FastStream(broker)
+tg_service = create_telegram_notify_service()
 
 DLQ_STREAMS = [
     "notifications.telegram.dlq",
@@ -50,9 +53,23 @@ def _make_subscriber(stream_name: str) -> StreamSub:
         )
         # TODO alert sentry
         # TODO alert slack
-        # TODO alert admin telegram notification
-
-        return
+        if settings.tg.admin_notify:
+            try:
+                await tg_service.send_admin_error_message(
+                    error_message=(
+                        f"🚨 DLQ message received\n"
+                        f"Stream: {stream_name}\n"
+                        f"Source: {msg.source_stream}\n"
+                        f"Error: {msg.error}\n"
+                        f"Cause: {msg.error_cause}\n"
+                        f"Failed at: {msg.failed_at}"
+                    )
+                )
+            except ApplicationException:
+                logger.exception(
+                    "Failed to send Telegram alert. Source stream: %s",
+                    msg.source_stream,
+                )
 
 
 _register_subscribers()

@@ -4,7 +4,7 @@ import random
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
-from core.exceptions import RetryError
+from core.exceptions import RetryException
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -59,7 +59,7 @@ class RetryPolicy:
             self._max_attempts,
             last_error,
         )
-        raise RetryError(
+        raise RetryException(
             f"Operation failed after {self._max_attempts} attempts"
         ) from last_error
 

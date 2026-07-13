@@ -6,7 +6,7 @@ from faststream import FastStream
 from faststream.redis import StreamSub
 
 from core import settings
-from core.exceptions import RetryError
+from core.exceptions import RetryException
 from core.utils import get_error_cause
 from infrastructure import create_redis_broker
 from schemas.notify_schema import TelegramNotificationSchema
@@ -44,11 +44,10 @@ async def tg_worker(data: TelegramNotificationSchema) -> None:
     try:
         await service.send(data)
 
-    except RetryError as exc:
+    except RetryException as exc:
         logger.error(
-            "Telegram delivery failed after retries: chat_id=%s error=%s cause=%s",
+            "Telegram delivery failed after retries: chat_id=%s cause=%s",
             data.chat_id,
-            exc,
             get_error_cause(exc),
             exc_info=True,
         )

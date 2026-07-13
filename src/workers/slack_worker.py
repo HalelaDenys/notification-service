@@ -9,9 +9,9 @@ from core import settings
 from core.exceptions import RetryException
 from core.utils import get_error_cause
 from infrastructure import create_redis_broker
-from schemas.notify_schema import EmailNotificationSchema
+from schemas.notify_schema import SlackNotificationSchema
 from services.dlq_service import DLQService
-from services.factory import create_smtp_notify_service
+from services.factory import create_slack_notify_service
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -20,14 +20,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-STREAM_NAME = "notifications.smtp"
-GROUP_NAME = "smtp-workers"
-CONSUMER_NAME = f"smtp-{socket.gethostname()}-{os.getpid()}"
+STREAM_NAME = "notifications.slack"
+GROUP_NAME = "slack-workers"
+CONSUMER_NAME = f"slack-{socket.gethostname()}-{os.getpid()}"
 
 broker = create_redis_broker()
 app = FastStream(broker)
 
-service = create_smtp_notify_service()
+service = create_slack_notify_service()
 dlq_service = DLQService(broker=broker)
 
 
@@ -40,14 +40,14 @@ dlq_service = DLQService(broker=broker)
         polling_interval=1000,
     ),
 )
-async def smtp_worker(data: EmailNotificationSchema) -> None:
+async def slack_worker(data: SlackNotificationSchema) -> None:
     try:
         await service.send(data)
 
     except RetryException as exc:
         logger.error(
-            "Email delivery failed after retries: recipient=%s cause=%s",
-            data.recipient,
+            "Slack delivery failed after retries: channl_id=%s cause=%s",
+            data.channel_id,
             get_error_cause(exc),
             exc_info=True,
         )
@@ -57,9 +57,9 @@ async def smtp_worker(data: EmailNotificationSchema) -> None:
                 data=data, ecx=exc, stream_name=STREAM_NAME
             )
         except Exception:
-            logger.exception("Failed to publish to DLQ: recipient=%s", data.recipient)
+            logger.exception("Failed to publish to DLQ: channl_id=%s", data.channel_id)
             raise
 
     except Exception:
-        logger.exception("Unexpected smtp worker error: chat_id=%s", data.recipient)
+        logger.exception("Unexpected slack worker error: channl_id=%s", data.channel_id)
         raise

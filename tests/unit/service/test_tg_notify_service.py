@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from core.exceptions import RetryError, TelegramClientException
+from core.exceptions import RetryException, TelegramClientException
 
 
 class TestTgNotifyService:
@@ -75,7 +75,7 @@ class TestTgNotifyService:
             side_effect=TelegramClientException("error"),
         )
 
-        with pytest.raises(RetryError):
+        with pytest.raises(RetryException):
             await tg_service.send(plain_data_tg)
 
         assert fake_tg_client.send_message.await_count == 3
