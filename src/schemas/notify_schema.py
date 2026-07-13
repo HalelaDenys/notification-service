@@ -111,8 +111,13 @@ class TelegramNotificationSchema(BaseNotificationSchema):
     reply_markup: InlineKeyboardMarkupSchema | ReplyKeyboardMarkupSchema | None = None
 
 
+class SlackNotificationSchema(BaseNotificationSchema):
+    type: Literal["slack"]
+    channel_id: Annotated[str, Field(min_length=10, max_length=25)]
+
+
 NotificationRequestSchema = Annotated[
-    EmailNotificationSchema | TelegramNotificationSchema,
+    EmailNotificationSchema | TelegramNotificationSchema | SlackNotificationSchema,
     Field(discriminator="type"),
 ]
 

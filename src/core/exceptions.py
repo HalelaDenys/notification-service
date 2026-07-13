@@ -27,3 +27,11 @@ class TelegramClientException(TelegramException):
 
 class TGAdminChatIdException(TelegramException):
     """Admin chat ID is not configured or invalid."""
+
+
+class SlackException(ApplicationException):
+    """Base Slack exception."""
+
+
+class SlackClientException(SlackException):
+    """Slack client error."""
