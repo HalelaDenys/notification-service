@@ -6,6 +6,8 @@ x-notify-common: &notify-common
   environment: &worker-environment
     PYTHONDONTWRITEBYTECODE: "1"
     PYTHONUNBUFFERED: "1"
+#  volumes: &notify-volumes
+#    - notify_uploads:/app/data/uploads
   depends_on:
     redis:
       condition: service_healthy
@@ -19,10 +21,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-#    ports:
-#      - "8000:8000"
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
+#    expose:
+#      - "8000"
     command: ["uv", "run", "python", "main.py"]
 
   redis:
@@ -73,6 +75,10 @@ services:
     <<: *notify-common
     command: ["faststream", "run", "workers.dlq_worker:app"]
 
+  slack-worker:
+    <<: *notify-common
+    command: [ "faststream", "run", "workers.slack_worker:app" ]
+
   nginx:
     image: nginx:alpine
     ports:
@@ -84,3 +90,4 @@ services:
 
 volumes:
   redis_data:
+#  notify_uploads:

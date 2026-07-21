@@ -109,11 +109,13 @@ class TelegramNotificationSchema(BaseNotificationSchema):
     type: Literal["telegram"]
     chat_id: Annotated[int, Field(gt=0, description="Chat ID")]
     reply_markup: InlineKeyboardMarkupSchema | ReplyKeyboardMarkupSchema | None = None
+    file_id: str | None = None
 
 
 class SlackNotificationSchema(BaseNotificationSchema):
     type: Literal["slack"]
     channel_id: Annotated[str, Field(min_length=10, max_length=25)]
+    file_id: str | None = None
 
 
 NotificationRequestSchema = Annotated[
