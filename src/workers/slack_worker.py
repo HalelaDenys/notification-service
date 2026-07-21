@@ -8,7 +8,7 @@ from faststream.redis import StreamSub
 from core import settings
 from core.exceptions import RetryException
 from core.utils import get_error_cause
-from infrastructure import create_redis_broker
+from infrastructure import create_redis_broker, redis_client
 from schemas.notify_schema import SlackNotificationSchema
 from services.dlq_service import DLQService
 from services.factory import create_slack_notify_service
@@ -29,6 +29,16 @@ app = FastStream(broker)
 
 service = create_slack_notify_service()
 dlq_service = DLQService(broker=broker)
+
+
+@app.on_startup
+async def startup():
+    await redis_client.connect()
+
+
+@app.on_shutdown
+async def shutdown():
+    await redis_client.disconnect()
 
 
 @broker.subscriber(

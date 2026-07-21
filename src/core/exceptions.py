@@ -35,3 +35,15 @@ class SlackException(ApplicationException):
 
 class SlackClientException(SlackException):
     """Slack client error."""
+
+
+class UnsupportedFileTypeError(ApplicationException):
+    """Unsupported file type."""
+
+
+class FileTooLargeError(ApplicationException):
+    """File too large."""
+
+
+class FileNotFoundOrExpiredError(ApplicationException):
+    """File not found."""

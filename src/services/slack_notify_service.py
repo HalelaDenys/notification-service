@@ -3,6 +3,7 @@ import logging
 from core import RetryPolicy
 from infrastructure.slack.client import SlackClient
 from schemas.notify_schema import SlackNotificationSchema
+from services.file_work_service import FileWorkService
 
 logger = logging.getLogger(__name__)
 
@@ -12,26 +13,50 @@ class SlackNotifyService:
         self,
         client: SlackClient,
         retry_policy: RetryPolicy,
+        file_service: FileWorkService,
     ):
         self._client = client
         self._retry_policy = retry_policy
+        self._file_service = file_service
 
     async def send(
-        self, notify_data: SlackNotificationSchema, file_name: str | None = None
+        self,
+        notify_data: SlackNotificationSchema,
     ) -> None:
-        if file_name is None:
+        if notify_data.file_id is not None:
+            content, meta = await self._file_service.get_file(notify_data.file_id)
+            await self.send_file(
+                channel_id=notify_data.channel_id,
+                text=notify_data.message,
+                file_name=meta["file_name"],
+                content=content,
+                file_size=meta["size"],
+            )
+        else:
             await self.send_message(
                 channel_id=notify_data.channel_id, text=notify_data.message
             )
-        else:
-            logger.info("SlackNotifyService sending file")
 
-    async def send_message(self, channel_id: str, text: str):
+    async def send_message(self, channel_id: str, text: str) -> None:
         await self._retry_policy.execute(
             self._client.send_message,
             channel_id=channel_id,
             text=text,
         )
 
-    async def send_file(self) -> None:
-        raise NotImplementedError("Method not implemented")
+    async def send_file(
+        self,
+        channel_id: str,
+        text: str,
+        file_name: str,
+        content: bytes,
+        file_size: int,
+    ) -> None:
+        await self._retry_policy.execute(
+            self._client.send_document,
+            channel_id=channel_id,
+            text=text,
+            file_name=file_name,
+            content=content,
+            file_size=file_size,
+        )

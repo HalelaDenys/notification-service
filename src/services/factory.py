@@ -1,8 +1,10 @@
 from core import RetryPolicy, settings
 from core import exceptions as exc
+from infrastructure import redis_client
 from infrastructure.slack.client import SlackClient
 from infrastructure.smtp.client import create_smtp_client
 from infrastructure.telegram.client import TelegramClient
+from services.file_work_service import FileWorkService
 from services.slack_notify_service import SlackNotifyService
 from services.smtp_notify_service import SMTPNotifyService
 from services.tg_notify_service import TelegramNotifyService
@@ -21,6 +23,7 @@ def create_telegram_notify_service(
     return TelegramNotifyService(
         client=TelegramClient(token=token),
         retry_policy=RetryPolicy(exceptions=(exc.TelegramClientException,)),
+        file_service=FileWorkService(redis=redis_client),
     )
 
 
@@ -30,4 +33,5 @@ def create_slack_notify_service(
     return SlackNotifyService(
         client=SlackClient(token=token),
         retry_policy=RetryPolicy(exceptions=(exc.SlackClientException,)),
+        file_service=FileWorkService(redis=redis_client),
     )
