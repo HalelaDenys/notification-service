@@ -89,6 +89,8 @@ class TelegramConfig(BaseModel):
 
 class SlackConfig(BaseModel):
     bot_token: str = ""
+    error_channel_id: str
+    error_notify: bool = False
 
 
 class Settings(BaseSettings):

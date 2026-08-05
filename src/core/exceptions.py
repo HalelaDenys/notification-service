@@ -37,6 +37,10 @@ class SlackClientException(SlackException):
     """Slack client error."""
 
 
+class SlackErrorChannelException(SlackException):
+    """Slack error channel."""
+
+
 class UnsupportedFileTypeError(ApplicationException):
     """Unsupported file type."""
 

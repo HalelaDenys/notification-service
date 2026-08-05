@@ -39,7 +39,7 @@ async def notify_upload_file(
     file: Annotated[UploadFile, File()],
     service: Annotated["FileWorkService", Depends(get_file_work_service)],
 ) -> dict:
-    """MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    """MAX_FILE_SIZE =  10 MB
     ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "application/pdf",
     "text/plain", "text/csv"}
     """
