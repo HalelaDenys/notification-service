@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -93,6 +93,35 @@ class SlackConfig(BaseModel):
     error_notify: bool = False
 
 
+class PostgresConfig(BaseModel):
+    user: str
+    password: str
+    host: str = "localhost"
+    port: int = 5432
+    db: str
+
+    @property
+    def dsn(self) -> str:
+        return (
+            f"postgresql+asyncpg://{self.user}:{self.password}@"
+            f"{self.host}:{self.port}/{self.db}"
+        )
+
+
+class DBConfig(BaseModel):
+    naming_convention: ClassVar[dict] = {
+        "ix": "ix_%(column_0_label)s",
+        "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s",
+    }
+
+    echo: bool = False
+
+    postgres: PostgresConfig
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(BASE_DIR / ".env",),
@@ -107,6 +136,7 @@ class Settings(BaseSettings):
     slack: SlackConfig
     logging: LoggingConfig = LoggingConfig()
     smtp: SMTPConfig = SMTPConfig()
+    db: DBConfig
 
 
 settings = Settings()
