@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from api import main_router
 from core import settings
-from infrastructure import broker, redis_client
+from infrastructure import broker, db_helper, redis_client
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await broker.stop()
     await redis_client.disconnect()
+    await db_helper.dispose()
     logging.info("Ending lifespan")
 
 

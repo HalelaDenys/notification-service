@@ -51,3 +51,11 @@ class FileTooLargeError(ApplicationException):
 
 class FileNotFoundOrExpiredError(ApplicationException):
     """File not found."""
+
+
+class RepositoryError(ApplicationException):
+    """Base repository error."""
+
+
+class MultipleRowsFoundError(RepositoryError):
+    """Raised when a unique lookup matches more than one row."""
