@@ -1,11 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Header, UploadFile
 
-from dependencies import get_file_work_service, get_notify_service
+from dependencies import get_file_work_service, get_notification_dispatcher_service
 from schemas.notify_schema import NotificationRequestSchema
-from services.broker_notify_service import BrokerNotifyService
 from services.file_work_service import FileWorkService
+from services.notification_dispatcher_service import NotificationDispatcherService
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -21,9 +21,15 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 )
 async def notify(
     data: NotificationRequestSchema,
-    notify_service: Annotated[BrokerNotifyService, Depends(get_notify_service)],
+    notify_service: Annotated[
+        NotificationDispatcherService, Depends(get_notification_dispatcher_service)
+    ],
+    idempotency_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    await notify_service.send(data=data)
+    print(idempotency_key)
+    await notify_service.notification(
+        request_data=data, idempotency_key=idempotency_key
+    )
 
 
 @router.post(

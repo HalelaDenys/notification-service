@@ -92,6 +92,7 @@ class Notification(BaseModel):
     next_retry_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
+    file_id: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
 
 
 class NotificationAttempt(BaseModel):
@@ -115,14 +116,14 @@ class NotificationAttempt(BaseModel):
         ),
     )
     error_message: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
-    error_cause: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    error_cause: Mapped[str | None] = mapped_column(VARCHAR, nullable=True)
 
     request_payload: Mapped[JSONB | None] = mapped_column(JSONB, nullable=True)
     response_payload: Mapped[JSONB | None] = mapped_column(JSONB, nullable=True)
 
     provider_message_id: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
 
-    started_at: Mapped[datetime | None] = mapped_column(
+    started_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,
         default=func.now(),
