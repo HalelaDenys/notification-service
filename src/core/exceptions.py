@@ -59,3 +59,7 @@ class RepositoryError(ApplicationException):
 
 class MultipleRowsFoundError(RepositoryError):
     """Raised when a unique lookup matches more than one row."""
+
+
+class NotificationNotFoundError(RepositoryError):
+    """Raised when a notification does not exist."""

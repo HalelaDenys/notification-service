@@ -2,11 +2,13 @@ import asyncio
 import logging
 import random
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import TypeVar
 
 from core.exceptions import RetryException
 
 logger = logging.getLogger(__name__)
+
 T = TypeVar("T")
 
 
@@ -29,15 +31,46 @@ class RetryPolicy:
         self,
         func: Callable[..., Awaitable[T]],
         *args,
+        on_attempt: (
+            Callable[
+                [int, datetime, datetime, T | None, Exception | None],
+                Awaitable[None],
+            ]
+            | None
+        ) = None,
         **kwargs,
     ) -> T:
         last_error = None
 
         for attempt in range(1, self._max_attempts + 1):
+            started_at = datetime.now(UTC)
             try:
-                return await func(*args, **kwargs)
+                result = await func(*args, **kwargs)
+                finished_at = datetime.now(UTC)
+
+                if on_attempt is not None:
+                    await on_attempt(
+                        attempt,
+                        started_at,
+                        finished_at,
+                        result,
+                        None,
+                    )
+
+                return result
+
             except self._exceptions as exc:
                 last_error = exc
+                finished_at = datetime.now(UTC)
+
+                if on_attempt:
+                    await on_attempt(
+                        attempt,
+                        started_at,
+                        finished_at,
+                        None,
+                        exc,
+                    )
 
                 if attempt == self._max_attempts:
                     break
