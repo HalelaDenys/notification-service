@@ -8,7 +8,7 @@ from core import settings
 from core.exceptions import ApplicationException
 from infrastructure import create_redis_broker
 from schemas.notify_schema import DLQMessageSchema
-from services.factory import create_telegram_notify_service
+from services.factory import create_slack_notify_service, create_telegram_notify_service
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 broker = create_redis_broker()
 app = FastStream(broker)
 tg_service = create_telegram_notify_service()
+slack_service = create_slack_notify_service()
 
 DLQ_STREAMS = [
     "notifications.telegram.dlq",
@@ -52,7 +53,6 @@ def _make_subscriber(stream_name: str) -> StreamSub:
             msg.failed_at,
         )
         # TODO alert sentry
-        # TODO alert slack
         if settings.tg.admin_notify:
             try:
                 await tg_service.send_admin_error_message(
@@ -68,6 +68,23 @@ def _make_subscriber(stream_name: str) -> StreamSub:
             except ApplicationException:
                 logger.exception(
                     "Failed to send Telegram alert. Source stream: %s",
+                    msg.source_stream,
+                )
+        if settings.slack.notify_slack:
+            try:
+                await slack_service.send_error_message_to_channel(
+                    error_message=(
+                        f"🚨 DLQ message received\n"
+                        f"Stream: {stream_name}\n"
+                        f"Source: {msg.source_stream}\n"
+                        f"Error: {msg.error}\n"
+                        f"Cause: {msg.error_cause}\n"
+                        f"Failed at: {msg.failed_at}"
+                    ),
+                )
+            except ApplicationException:
+                logger.exception(
+                    "Failed to send Slack alert. Source stream: %s",
                     msg.source_stream,
                 )
 

@@ -37,6 +37,10 @@ class SlackClientException(SlackException):
     """Slack client error."""
 
 
+class SlackErrorChannelException(SlackException):
+    """Slack error channel."""
+
+
 class UnsupportedFileTypeError(ApplicationException):
     """Unsupported file type."""
 
@@ -47,3 +51,15 @@ class FileTooLargeError(ApplicationException):
 
 class FileNotFoundOrExpiredError(ApplicationException):
     """File not found."""
+
+
+class RepositoryError(ApplicationException):
+    """Base repository error."""
+
+
+class MultipleRowsFoundError(RepositoryError):
+    """Raised when a unique lookup matches more than one row."""
+
+
+class NotificationNotFoundError(RepositoryError):
+    """Raised when a notification does not exist."""

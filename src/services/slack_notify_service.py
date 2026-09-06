@@ -1,6 +1,7 @@
 import logging
 
-from core import RetryPolicy
+from core import RetryPolicy, settings
+from core.exceptions import SlackErrorChannelException
 from infrastructure.slack.client import SlackClient
 from schemas.notify_schema import SlackNotificationSchema
 from services.file_work_service import FileWorkService
@@ -59,4 +60,17 @@ class SlackNotifyService:
             file_name=file_name,
             content=content,
             file_size=file_size,
+        )
+
+    async def send_error_message_to_channel(
+        self,
+        error_message: str,
+    ) -> None:
+        if settings.slack.error_channel_id is None:
+            raise SlackErrorChannelException("ERROR_CHANNEL_ID is not configured.")
+
+        await self._retry_policy.execute(
+            self._client.send_message,
+            channel_id=settings.slack.error_channel_id,
+            text=error_message,
         )
