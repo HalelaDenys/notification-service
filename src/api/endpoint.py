@@ -26,7 +26,6 @@ async def notify(
     ],
     idempotency_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    print(idempotency_key)
     await notify_service.notification(
         request_data=data, idempotency_key=idempotency_key
     )

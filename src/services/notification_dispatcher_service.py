@@ -1,7 +1,16 @@
+from collections.abc import Callable
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from infrastructure import DBHelper
 from schemas.notify_enums import ChannelEnum, StatusEnum
 from schemas.notify_schema import (
     EmailNotificationSchema,
     NotificationRequestSchema,
+    SendEmailMessageToBrokerSchema,
+    SendMessageToBrokerSchemaType,
+    SendSlackMessageToBrokerSchema,
+    SendTelegramMessageToBrokerSchema,
     SlackNotificationSchema,
     TelegramNotificationSchema,
 )
@@ -11,10 +20,17 @@ from services.notification_service import NotificationService
 
 class NotificationDispatcherService:
     def __init__(
-        self, notify_service: NotificationService, b_service: BrokerNotifyService
+        self,
+        b_service: BrokerNotifyService,
+        notification_service_factory: Callable[
+            [AsyncSession],
+            NotificationService,
+        ],
+        db_helper: DBHelper,
     ) -> None:
-        self._notify_service = notify_service
+        self._notification_service_factory = notification_service_factory
         self._b_service = b_service
+        self._db_helper = db_helper
 
     async def notification(
         self, request_data: NotificationRequestSchema, idempotency_key: str | None
@@ -41,7 +57,11 @@ class NotificationDispatcherService:
         if smtp_data.context is not None:
             payload["payload"] = smtp_data.context.model_dump_json()
 
-        await self._create_and_send_broker(payload=payload, notify_data=smtp_data)
+        await self._create_and_send_broker(
+            payload=payload,
+            notify_data=smtp_data,
+            broker_schema=SendEmailMessageToBrokerSchema,
+        )
 
     async def notify_telegram(
         self, tg_data: TelegramNotificationSchema, idempotency_key: str | None = None
@@ -60,7 +80,11 @@ class NotificationDispatcherService:
         if tg_data.file_id is not None:
             payload["file_id"] = f"{tg_data.file_id}"
 
-        await self._create_and_send_broker(payload=payload, notify_data=tg_data)
+        await self._create_and_send_broker(
+            payload=payload,
+            notify_data=tg_data,
+            broker_schema=SendTelegramMessageToBrokerSchema,
+        )
 
     async def notify_slack(
         self, slack_data: SlackNotificationSchema, idempotency_key: str | None = None
@@ -76,16 +100,28 @@ class NotificationDispatcherService:
         if slack_data.file_id is not None:
             payload["file_id"] = f"{slack_data.file_id}"
 
-        await self._create_and_send_broker(payload=payload, notify_data=slack_data)
+        await self._create_and_send_broker(
+            payload=payload,
+            notify_data=slack_data,
+            broker_schema=SendSlackMessageToBrokerSchema,
+        )
 
     async def _create_and_send_broker(
-        self, payload, notify_data: NotificationRequestSchema
+        self,
+        payload,
+        notify_data: NotificationRequestSchema,
+        broker_schema: type[SendMessageToBrokerSchemaType],
     ) -> None:
-        notification = await self._notify_service.save_notification(payload)
+        async with self._db_helper.get_session() as session:
+            notification_service = self._notification_service_factory(session)
 
-        if notification is None:
-            return
+            notification = await notification_service.save_notification(payload)
+            if notification is None:
+                return
 
         await self._b_service.send(
-            data=notify_data,
+            data=broker_schema(
+                notify_data=notify_data,
+                notify_id=notification.id,
+            )
         )

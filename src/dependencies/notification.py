@@ -18,14 +18,10 @@ async def get_file_work_service() -> AsyncGenerator[FileWorkService, None]:
 async def get_notification_dispatcher_service() -> AsyncGenerator[
     NotificationDispatcherService, None
 ]:
-    async with db_helper.get_session() as session:
-        notification_service = create_notification_service(
-            session=session,
-        )
-
-        yield NotificationDispatcherService(
-            notify_service=notification_service,
-            b_service=BrokerNotifyService(
-                broker=broker,
-            ),
-        )
+    yield NotificationDispatcherService(
+        notification_service_factory=create_notification_service,
+        b_service=BrokerNotifyService(
+            broker=broker,
+        ),
+        db_helper=db_helper,
+    )

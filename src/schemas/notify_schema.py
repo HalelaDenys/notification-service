@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -122,6 +123,29 @@ NotificationRequestSchema = Annotated[
     EmailNotificationSchema | TelegramNotificationSchema | SlackNotificationSchema,
     Field(discriminator="type"),
 ]
+
+
+class BaseSendMessageToBrokerSchema(BaseModel):
+    notify_id: UUID
+
+
+class SendEmailMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
+    notify_data: EmailNotificationSchema
+
+
+class SendTelegramMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
+    notify_data: TelegramNotificationSchema
+
+
+class SendSlackMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
+    notify_data: SlackNotificationSchema
+
+
+SendMessageToBrokerSchemaType = (
+    SendEmailMessageToBrokerSchema
+    | SendTelegramMessageToBrokerSchema
+    | SendSlackMessageToBrokerSchema
+)
 
 
 class DLQMessageSchema(BaseModel):
