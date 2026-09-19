@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import RetryPolicy, settings
-from core import exceptions as exc
 from infrastructure import DBHelper, redis_client
 from infrastructure.slack.client import SlackClient
 from infrastructure.smtp.client import create_smtp_client
@@ -28,7 +27,6 @@ def create_telegram_notify_service(
 ) -> TelegramNotifyService:
     return TelegramNotifyService(
         client=TelegramClient(token=token),
-        retry_policy=RetryPolicy(exceptions=(exc.TelegramClientException,)),
         file_service=FileWorkService(redis=redis_client),
     )
 
@@ -38,7 +36,6 @@ def create_slack_notify_service(
 ) -> SlackNotifyService:
     return SlackNotifyService(
         client=SlackClient(token=token),
-        retry_policy=RetryPolicy(exceptions=(exc.SlackClientException,)),
         file_service=FileWorkService(redis=redis_client),
     )
 

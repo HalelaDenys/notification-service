@@ -15,7 +15,17 @@ class TelegramClient:
         text: str,
         parse_mode: str = "HTML",
         reply_markup: dict | None = None,
-    ) -> None:
+    ) -> str:
+        """
+        Send a message via the Telegram Bot API.
+
+        :param chat_id: Recipient's chat ID.
+        :param text: Text of the message.
+        :param parse_mode: Formatting mode for the message text.
+        :param reply_markup: Optional inline keyboard or reply markup.
+        :return: Identifier of the sent Telegram message.
+        """
+
         payload = {
             "chat_id": chat_id,
             "parse_mode": parse_mode,
@@ -30,13 +40,21 @@ class TelegramClient:
                 url=f"{self._url}/sendMessage",
                 json=payload,
             )
-
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as exc:
                 raise TelegramClientException(
                     f"Telegram API error: {exc.response.status_code}"
                 ) from exc
+
+            data = response.json()
+
+            if not data.get("ok"):
+                raise TelegramClientException(
+                    f"Telegram API error: {data.get('description')}"
+                )
+
+            return str(response.json()["result"]["message_id"])
 
     async def send_document(
         self,
@@ -45,15 +63,18 @@ class TelegramClient:
         content: bytes,
         content_type: str,
         caption: str | None = None,
-    ) -> None:
+    ) -> str:
         """
-        sends a document/file via the self._url/sendDocument Telegram Bot API
-        :param chat_id: Recipient’s chat ID
-        :param filename: File name
-        :param caption: Additional text for the file
-        :param content: Content for the file
-        :param content_type: Content type
+        Send a document via the Telegram Bot API.
+
+        :param chat_id: Recipient's chat ID.
+        :param filename: Name of the file.
+        :param content: File content.
+        :param content_type: MIME type of the file.
+        :param caption: Optional text to include with the file.
+        :return: Identifier of the sent Telegram message.
         """
+
         payload = {
             "chat_id": str(chat_id),
         }
@@ -81,3 +102,4 @@ class TelegramClient:
                 raise TelegramClientException(
                     f"Telegram API error: {data.get('description')}"
                 )
+            return str(response.json()["result"]["message_id"])
