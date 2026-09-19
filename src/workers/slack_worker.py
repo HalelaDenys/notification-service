@@ -6,12 +6,15 @@ from faststream import FastStream
 from faststream.redis import StreamSub
 
 from core import settings
-from core.exceptions import RetryException
+from core.exceptions import RetryException, SlackException
 from core.utils import get_error_cause
-from infrastructure import create_redis_broker, redis_client
-from schemas.notify_schema import SlackNotificationSchema
+from infrastructure import create_redis_broker, db_helper, redis_client
+from schemas.notify_schema import SendSlackMessageToBrokerSchema
 from services.dlq_service import DLQService
-from services.factory import create_slack_notify_service
+from services.factory import (
+    create_notification_delivery_service,
+    create_slack_notify_service,
+)
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -50,26 +53,49 @@ async def shutdown():
         polling_interval=1000,
     ),
 )
-async def slack_worker(data: SlackNotificationSchema) -> None:
+async def slack_worker(notification_data: SendSlackMessageToBrokerSchema) -> None:
+    """
+    Processing a notification from a broker on Slack.
+
+    :param notification_data: Data required to send the slack.
+    :return: None
+    """
+
     try:
-        await service.send(data)
-
-    except RetryException as exc:
-        logger.error(
-            "Slack delivery failed after retries: channl_id=%s cause=%s",
-            data.channel_id,
-            get_error_cause(exc),
-            exc_info=True,
+        deliver_service = create_notification_delivery_service(
+            exceptions=(SlackException,),
+            db_helper=db_helper,
         )
-
         try:
-            await dlq_service.publish_to_dlq(
-                data=data, ecx=exc, stream_name=STREAM_NAME
+            await deliver_service.deliver_notification(
+                notify_data=notification_data,
+                send_func=lambda: service.send(
+                    notification_data=notification_data.notify_data
+                ),
             )
-        except Exception:
-            logger.exception("Failed to publish to DLQ: channl_id=%s", data.channel_id)
-            raise
+
+        except RetryException as exc:
+            logger.error(
+                "Slack delivery failed after retries: channl_id=%s cause=%s",
+                notification_data.notify_data.channel_id,
+                get_error_cause(exc),
+                exc_info=True,
+            )
+
+            try:
+                await dlq_service.publish_to_dlq(
+                    data=notification_data, ecx=exc, stream_name=STREAM_NAME
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to publish to DLQ: channl_id=%s",
+                    notification_data.notify_data.channel_id,
+                )
+                raise
 
     except Exception:
-        logger.exception("Unexpected slack worker error: channl_id=%s", data.channel_id)
+        logger.exception(
+            "Unexpected slack worker error: channl_id=%s",
+            notification_data.notify_data.channel_id,
+        )
         raise

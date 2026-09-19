@@ -14,3 +14,17 @@ class CreateNotificationAttemptDTO:
     provider_message_id: str | None = None
     error_message: str | None = None
     error_cause: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FileMetadataDTO:
+    file_id: str
+    file_name: str
+    content_type: str | None
+    size: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class FileDataDTO:
+    content: bytes
+    metadata: FileMetadataDTO

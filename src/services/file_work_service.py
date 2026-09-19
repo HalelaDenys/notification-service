@@ -13,6 +13,7 @@ from core.exceptions import (
     UnsupportedFileTypeError,
 )
 from infrastructure.redis_c.client import RedisClient
+from schemas.dtos import FileDataDTO, FileMetadataDTO
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,12 @@ class FileWorkService:
         self._redis = redis
 
     async def save_upload_file_and_save_metadata(self, file: UploadFile) -> str:
+        """
+        Save an uploaded file and its metadata.
+
+        :param file: Uploaded file to save.
+        :return: Unique identifier of the saved file.
+        """
         file_id = str(uuid.uuid4())
         file_path = DATA_DIR / file_id
 
@@ -59,12 +66,27 @@ class FileWorkService:
 
         return file_id
 
-    async def _save_file(self, file: UploadFile, file_path: Path) -> None:
+    @staticmethod
+    async def _save_file(file: UploadFile, file_path: Path) -> None:
+        """
+        Save an uploaded file to the specified path in chunks.
+
+        :param file: Uploaded file to save.
+        :param file_path: Path where the file will be saved.
+        :return: None
+        """
         async with aiofiles.open(file_path, mode="wb") as buffer:
             while chunk := await file.read(CHUNK_SIZE):
                 await buffer.write(chunk)
 
-    async def get_file(self, file_id: str) -> tuple[bytes, dict]:
+    async def get_file(self, file_id: str) -> FileDataDTO:
+        """
+        Retrieve a file and its metadata.
+
+        :param file_id: Unique identifier of the file.
+        :return: File content and metadata.
+        """
+
         raw_data = await self._redis.client.get(f"upload:{file_id}")
         if raw_data is None:
             raise FileNotFoundOrExpiredError(
@@ -80,9 +102,22 @@ class FileWorkService:
         async with aiofiles.open(file_path, mode="rb") as f:
             content = await f.read()
 
-        return content, metadata
+        return FileDataDTO(
+            content=content,
+            metadata=FileMetadataDTO(
+                file_id=metadata["file_id"],
+                file_name=metadata["file_name"],
+                content_type=metadata["content_type"],
+                size=metadata["size"],
+            ),
+        )
 
-    async def delete_file(self, file_id: str):
+    async def delete_file(self, file_id: str) -> None:
+        """
+        Delete an uploaded file and its metadata.
+        :param file_id: Unique identifier of the file.
+        :return: None
+        """
         file_path = DATA_DIR / file_id
         file_path.unlink(missing_ok=True)
         await self._redis.client.delete(f"upload:{file_id}")
