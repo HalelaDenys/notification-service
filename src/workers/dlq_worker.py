@@ -70,7 +70,7 @@ def _make_subscriber(stream_name: str) -> StreamSub:
                     "Failed to send Telegram alert. Source stream: %s",
                     msg.source_stream,
                 )
-        if settings.slack.notify_slack:
+        if settings.slack.error_notify:
             try:
                 await slack_service.send_error_message_to_channel(
                     error_message=(
