@@ -9,10 +9,12 @@ class ChannelEnum(StrEnum):
 
 class StatusEnum(StrEnum):
     PENDING = "pending"
+    QUEUED = "queued"
     PROCESSING = "processing"
     SENT = "sent"
     FAILED = "failed"
     DLQ = "dlq"
+    CANCELLED = "cancelled"
 
 
 class StatusActionEnum(StrEnum):
