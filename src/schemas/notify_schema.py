@@ -23,6 +23,7 @@ class BaseNotificationSchema(BaseModel):
     ]
 
 
+# ---------------- SMTP SCHEMAS ----------------
 class EmailContextSchema(BaseModel):
     title: str
     action_url: str | None = None
@@ -69,6 +70,7 @@ class EmailNotificationSchema(BaseNotificationSchema):
     )
 
 
+# ------------------ TELEGRAM SCHEMAS -------------------
 class ReplyKeyboardMarkupSchema(BaseModel):
     keyboard: list[list[str]]
     resize_keyboard: bool = True
@@ -113,6 +115,7 @@ class TelegramNotificationSchema(BaseNotificationSchema):
     file_id: str | None = None
 
 
+# ------------------- SLACK SCHEMAS -----------------------
 class SlackNotificationSchema(BaseNotificationSchema):
     type: Literal["slack"]
     channel_id: Annotated[str, Field(min_length=10, max_length=25)]
@@ -125,6 +128,7 @@ NotificationRequestSchema = Annotated[
 ]
 
 
+# ================== WORKER REQUEST SCHEMAS ====================
 class BaseSendMessageToBrokerSchema(BaseModel):
     notify_id: UUID
 
@@ -156,3 +160,133 @@ class DLQMessageSchema(BaseModel):
     failed_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
     )
+
+
+# =============== NOTIFICATION BATCH SCHEMAS ===============
+class BaseBatchNotificationSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=10, max_length=300),
+    ]
+
+
+class BaseBatchRecipientSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# --------------- SMTP BATCH SCHEMAS -----------------
+class SMTPBatchRecipientSchema(BaseBatchRecipientSchema):
+    recipient: EmailStr
+    context: EmailContextSchema | None = None
+
+
+class SMTPBatchNotificationRequestSchema(BaseBatchNotificationSchema):
+    type: Literal["smtp"]
+    subject: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=10, max_length=100)
+    ]
+
+    recipients: Annotated[
+        list[SMTPBatchRecipientSchema], Field(min_length=1, max_length=10_000)
+    ]
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_unique_recipients(
+        cls,
+        recipients: list[SMTPBatchRecipientSchema],
+    ) -> list[SMTPBatchRecipientSchema]:
+        seen = {r.recipient for r in recipients}
+
+        if len(seen) != len(recipients):
+            raise ValueError(
+                "Duplicate recipients are not allowed in a single batch",
+            )
+        return recipients
+
+
+# --------------- TELEGRAM BATCH SCHEMAS -----------------
+class TelegramBatchRecipientSchema(BaseBatchRecipientSchema):
+    chat_id: Annotated[int, Field(gt=0, description="Chat ID")]
+    file_id: str | None = None
+
+
+class TelegramBatchNotificationRequestSchema(BaseBatchNotificationSchema):
+    type: Literal["telegram"]
+    reply_markup: InlineKeyboardMarkupSchema | ReplyKeyboardMarkupSchema | None = None
+    recipients: Annotated[
+        list[TelegramBatchRecipientSchema], Field(min_length=1, max_length=10_000)
+    ]
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_unique_recipients(
+        cls,
+        recipients: list[TelegramBatchRecipientSchema],
+    ) -> list[TelegramBatchRecipientSchema]:
+        seen = {r.chat_id for r in recipients}
+
+        if len(seen) != len(recipients):
+            raise ValueError(
+                "Duplicate recipients are not allowed in a single batch",
+            )
+        return recipients
+
+
+# --------------- SLACK BATCH SCHEMAS -----------------
+class SlackBatchRecipientSchema(BaseBatchRecipientSchema):
+    channel_id: Annotated[int, Field(gt=0, description="Channel ID")]
+    file_id: str | None = None
+
+
+class SlackBatchNotificationRequestSchema(BaseBatchNotificationSchema):
+    type: Literal["slack"]
+    recipients: Annotated[
+        list[SlackBatchRecipientSchema],
+        Field(min_length=1, max_length=10_000),
+    ]
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_unique_recipients(
+        cls,
+        recipients: list[SlackBatchRecipientSchema],
+    ) -> list[SlackBatchRecipientSchema]:
+        seen = {r.channel_id for r in recipients}
+
+        if len(seen) != len(recipients):
+            raise ValueError(
+                "Duplicate recipients are not allowed in a single batch",
+            )
+        return recipients
+
+
+BatchNotificationRequestSchema = Annotated[
+    SMTPBatchNotificationRequestSchema
+    | TelegramBatchNotificationRequestSchema
+    | SlackBatchNotificationRequestSchema,
+    Field(discriminator="type"),
+]
+
+
+# ---------- BATCh RESPONSE SCHEMAS ----------
+class BatchCreatedResponseSchema(BaseModel):
+    batch_id: UUID
+    total: int
+    skipped_duplicates: int
+    idempotent_replay: bool
+
+
+class BatchStatusResponseSchema(BaseModel):
+    batch_id: UUID
+    total: int
+    pending: int = 0
+    queued: int = 0
+    processing: int = 0
+    sent: int = 0
+    failed: int = 0
+    dlq: int = 0
+    cancelled: int = 0
+    cancelled_at: str | None = None

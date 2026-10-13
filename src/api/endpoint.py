@@ -1,10 +1,21 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, UploadFile
 
-from dependencies import get_file_work_service, get_notification_dispatcher_service
-from schemas.notify_schema import NotificationRequestSchema
+from dependencies import (
+    get_file_work_service,
+    get_notification_batch_service,
+    get_notification_dispatcher_service,
+)
+from schemas.notify_schema import (
+    BatchCreatedResponseSchema,
+    BatchNotificationRequestSchema,
+    BatchStatusResponseSchema,
+    NotificationRequestSchema,
+)
 from services.file_work_service import FileWorkService
+from services.notification_batch_service import NotificationBatchService
 from services.notification_dispatcher_service import NotificationDispatcherService
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -53,3 +64,37 @@ async def notify_upload_file(
     )
 
     return {"file_id": file_id}
+
+
+@router.post("/batch")
+async def create_batch(
+    notify_batch_data: BatchNotificationRequestSchema,
+    batch_service: Annotated[
+        NotificationBatchService, Depends(get_notification_batch_service)
+    ],
+    idempotency_key: Annotated[str | None, Header()] = None,
+) -> BatchCreatedResponseSchema:
+    return await batch_service.create_batch(
+        batch_data=notify_batch_data,
+        idempotency_key=idempotency_key,
+    )
+
+
+@router.get("/batch/{batch_id}")
+async def get_batch_status(
+    batch_id: UUID,
+    batch_service: Annotated[
+        NotificationBatchService, Depends(get_notification_batch_service)
+    ],
+) -> BatchStatusResponseSchema:
+    return await batch_service.get_status(batch_id=batch_id)
+
+
+@router.post("/batch/{batch_id}/cancel")
+async def cancel_batch(
+    batch_id: UUID,
+    batch_service: Annotated[
+        NotificationBatchService, Depends(get_notification_batch_service)
+    ],
+):
+    return await batch_service.cancel_batch(batch_id=batch_id)
