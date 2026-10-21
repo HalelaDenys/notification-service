@@ -2,9 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import RetryPolicy, settings
 from infrastructure import DBHelper, redis_client
-from infrastructure.slack.client import SlackClient
+from infrastructure.http_clients.slack.client import SlackClient
+from infrastructure.http_clients.telegram.client import TelegramClient
 from infrastructure.smtp.client import create_smtp_client
-from infrastructure.telegram.client import TelegramClient
 from repositories.notify_attempt_repo import NotificationAttemptRepository
 from repositories.notify_repo import NotificationRepository
 from services.file_work_service import FileWorkService
@@ -65,7 +65,7 @@ def create_notification_delivery_service(
     exceptions: tuple[type[Exception], ...],
 ) -> NotificationDeliveryService:
     return NotificationDeliveryService(
-        retry_policy=RetryPolicy(exceptions=exceptions),
+        retry_policy=RetryPolicy(retryable_exceptions=exceptions),
         notification_service_factory=create_notification_service,
         attempt_service_factory=create_notification_attempt_service,
         db_helper=db_helper,

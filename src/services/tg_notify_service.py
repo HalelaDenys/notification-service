@@ -1,6 +1,7 @@
 from core import settings
 from core.exceptions import TGAdminChatIdException
-from infrastructure.telegram.client import TelegramClient
+from infrastructure.http_clients.telegram.client import TelegramClient
+from schemas.dtos import TelegramNotificationDTO
 from schemas.notify_schema import (
     TelegramNotificationSchema,
 )
@@ -42,7 +43,7 @@ class TelegramNotifyService:
         if settings.tg.admin_chat_id is None:
             raise TGAdminChatIdException("ADMIN_CHAT_ID is not configured.")
 
-        return await self._client.send_message(
+        return await self._client._send_message(
             chat_id=settings.tg.admin_chat_id,
             text=error_message,
         )
@@ -54,14 +55,16 @@ class TelegramNotifyService:
         :param notify_data: Data required to send the Telegram message.
         :return: provider massage id
         """
-        return await self._client.send_message(
-            chat_id=notify_data.chat_id,
-            text=notify_data.message,
-            reply_markup=(
-                notify_data.reply_markup.model_dump(exclude_none=True)
-                if notify_data.reply_markup
-                else None
-            ),
+        return await self._client.send(
+            notification_data=TelegramNotificationDTO(
+                chat_id=notify_data.chat_id,
+                text=notify_data.message,
+                reply_markup=(
+                    notify_data.reply_markup.model_dump(exclude_none=True)
+                    if notify_data.reply_markup
+                    else None
+                ),
+            )
         )
 
     async def send_file(self, notify_data: TelegramNotificationSchema) -> str:
@@ -74,10 +77,13 @@ class TelegramNotifyService:
 
         file_data = await self._file_service.get_file(notify_data.file_id)
 
-        return await self._client.send_document(
-            chat_id=notify_data.chat_id,
-            filename=file_data.metadata.file_name,
-            content=file_data.content,
-            content_type=file_data.metadata.content_type,
-            caption=notify_data.message,
+        return await self._client.send(
+            notification_data=TelegramNotificationDTO(
+                chat_id=notify_data.chat_id,
+                text=notify_data.message,
+                filename=file_data.metadata.file_name,
+                content=file_data.content,
+                content_type=file_data.metadata.content_type,
+                caption=notify_data.message,
+            )
         )

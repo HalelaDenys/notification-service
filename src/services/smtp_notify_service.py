@@ -1,9 +1,11 @@
-from infrastructure import SMTPClient, template
+from core.ports import AsyncClientProtocol
+from infrastructure import template
+from schemas.dtos import SMTPNotificationDTO
 from schemas.notify_schema import EmailNotificationSchema
 
 
 class SMTPNotifyService:
-    def __init__(self, smtp_client: SMTPClient):
+    def __init__(self, smtp_client: AsyncClientProtocol[SMTPNotificationDTO]):
         self._smtp_client = smtp_client
 
     async def send(self, notify_data: EmailNotificationSchema) -> None:
@@ -26,10 +28,12 @@ class SMTPNotifyService:
         :return: None
         """
 
-        await self._smtp_client.send_email(
-            recipient=notify_data.recipient,
-            subject=notify_data.subject,
-            plain_content=notify_data.message,
+        await self._smtp_client.send(
+            SMTPNotificationDTO(
+                recipient=notify_data.recipient,
+                subject=notify_data.subject,
+                plain_content=notify_data.message,
+            )
         )
 
     async def _send_html(self, notify_data: EmailNotificationSchema) -> None:
@@ -42,11 +46,13 @@ class SMTPNotifyService:
 
         html = self._render_html(notify_data)
 
-        await self._smtp_client.send_email(
-            recipient=notify_data.recipient,
-            subject=notify_data.subject,
-            plain_content=notify_data.message,
-            html_content=html,
+        await self._smtp_client.send(
+            SMTPNotificationDTO(
+                recipient=notify_data.recipient,
+                subject=notify_data.subject,
+                plain_content=notify_data.message,
+                html_content=html,
+            )
         )
 
     @staticmethod

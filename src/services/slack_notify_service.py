@@ -2,7 +2,8 @@ import logging
 
 from core import settings
 from core.exceptions import SlackErrorChannelException
-from infrastructure.slack.client import SlackClient
+from infrastructure.http_clients.slack.client import SlackClient
+from schemas.dtos import SlackNotificationDTO
 from schemas.notify_schema import SlackNotificationSchema
 from services.file_work_service import FileWorkService
 
@@ -34,21 +35,23 @@ class SlackNotifyService:
             )
         else:
             return await self.send_message(
-                channel_id=notification_data.channel_id,
-                text=notification_data.message,
+                notify_data=notification_data,
             )
 
-    async def send_message(self, channel_id: str, text: str) -> str:
+    async def send_message(
+        self,
+        notify_data: SlackNotificationSchema,
+    ) -> str:
         """
         Send a Slack message.
 
-        :param channel_id: The ID of the channel to which we want to send the message.
-        :param text: The message to send.
         :return: Provider message id
         """
-        return await self._client.send_message(
-            channel_id=channel_id,
-            text=text,
+        return await self._client.send(
+            notification_data=SlackNotificationDTO(
+                channel_id=notify_data.channel_id,
+                text=notify_data.message,
+            )
         )
 
     async def send_file(
@@ -63,12 +66,14 @@ class SlackNotifyService:
         """
         file_data = await self._file_service.get_file(notify_data.file_id)
 
-        return await self._client.send_document(
-            channel_id=notify_data.channel_id,
-            text=notify_data.message,
-            file_name=file_data.metadata.file_name,
-            content=file_data.content,
-            file_size=file_data.metadata.size,
+        return await self._client.send(
+            notification_data=SlackNotificationDTO(
+                channel_id=notify_data.channel_id,
+                text=notify_data.message,
+                file_name=file_data.metadata.file_name,
+                content=file_data.content,
+                file_size=file_data.metadata.size,
+            )
         )
 
     async def send_error_message_to_channel(
@@ -83,7 +88,7 @@ class SlackNotifyService:
         """
         if settings.slack.error_channel_id is None:
             raise SlackErrorChannelException("ERROR_CHANNEL_ID is not configured.")
-        await self._client.send_message(
+        await self._client._send_message(
             channel_id=settings.slack.error_channel_id,
             text=error_message,
         )
