@@ -66,7 +66,7 @@ async def notify_upload_file(
     return {"file_id": file_id}
 
 
-@router.post("/batch")
+@router.post("/batch", status_code=201)
 async def create_batch(
     notify_batch_data: BatchNotificationRequestSchema,
     batch_service: Annotated[
@@ -80,7 +80,7 @@ async def create_batch(
     )
 
 
-@router.get("/batch/{batch_id}")
+@router.get("/batch/{batch_id}", status_code=200)
 async def get_batch_status(
     batch_id: UUID,
     batch_service: Annotated[
@@ -90,7 +90,7 @@ async def get_batch_status(
     return await batch_service.get_status(batch_id=batch_id)
 
 
-@router.post("/batch/{batch_id}/cancel")
+@router.post("/batch/{batch_id}/cancel", status_code=200)
 async def cancel_batch(
     batch_id: UUID,
     batch_service: Annotated[

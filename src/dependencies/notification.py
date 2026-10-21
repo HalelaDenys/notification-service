@@ -1,9 +1,11 @@
 from collections.abc import AsyncGenerator
 
 from infrastructure import broker, db_helper, redis_client
+from repositories.nitify_batch_repo import NotificationBatchRepository
 from services.broker_notify_service import BrokerNotifyService
 from services.factory import create_notification_service
 from services.file_work_service import FileWorkService
+from services.notification_batch_service import NotificationBatchService
 from services.notification_dispatcher_service import NotificationDispatcherService
 
 
@@ -23,5 +25,15 @@ async def get_notification_dispatcher_service() -> AsyncGenerator[
         b_service=BrokerNotifyService(
             broker=broker,
         ),
+        db_helper=db_helper,
+    )
+
+
+async def get_notification_batch_service() -> AsyncGenerator[
+    NotificationBatchService, None
+]:
+    yield NotificationBatchService(
+        notification_service_factory=create_notification_service,
+        batch_repo_factory=lambda session: NotificationBatchRepository(session),
         db_helper=db_helper,
     )
