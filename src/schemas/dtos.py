@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TypeVar
 from uuid import UUID
 
 
@@ -28,3 +29,43 @@ class FileMetadataDTO:
 class FileDataDTO:
     content: bytes
     metadata: FileMetadataDTO
+
+
+@dataclass(frozen=True, slots=True)
+class BaseNotificationDTO:
+    pass
+
+
+NotificationDTO = TypeVar(
+    "NotificationDTO",
+    bound=BaseNotificationDTO,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SMTPNotificationDTO(BaseNotificationDTO):
+    recipient: str
+    subject: str
+    plain_content: str
+    html_content: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TelegramNotificationDTO(BaseNotificationDTO):
+    chat_id: int
+    text: str
+    filename: str | None = None
+    content: bytes | None = None
+    content_type: str | None = None
+    caption: str | None = None
+    parse_mode: str = "HTML"
+    reply_markup: dict | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SlackNotificationDTO(BaseNotificationDTO):
+    channel_id: str
+    text: str
+    file_name: str | None = None
+    content: bytes | None = None
+    file_size: int | None = None

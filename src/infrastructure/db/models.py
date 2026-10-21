@@ -7,6 +7,7 @@ from sqlalchemy import (
     VARCHAR,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     UniqueConstraint,
@@ -50,6 +51,14 @@ class BaseModel(DeclarativeBase):
 
 class Notification(BaseModel):
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index("idx_notifications_batch_status", "batch_id", "status"),
+        Index(
+            "idx_notifications_pending_retry",
+            "next_retry_at",
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
 
     channel: Mapped[ChannelEnum] = mapped_column(
         Enum(
@@ -60,12 +69,14 @@ class Notification(BaseModel):
         nullable=False,
     )
 
+    # recipient of the notification
     recipient: Mapped[str] = mapped_column(
         VARCHAR(100), comment="Who are we sending this to"
     )
-
+    # subject of the message
     subject: Mapped[str | None] = mapped_column(VARCHAR(150), nullable=True)
     message: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    # Further information regarding this message for Telegram and SMTP
     payload: Mapped[JSONB | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[StatusEnum] = mapped_column(
         Enum(
@@ -78,21 +89,30 @@ class Notification(BaseModel):
         nullable=False,
     )
     error_message: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
+    # How many attempts were made in total to send the message following the error
     retry_count: Mapped[int] = mapped_column(default=0, server_default=text("0"))
     provider_message_id: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
+    # a unique message key from the user
     idempotency_key: Mapped[str | None] = mapped_column(
         VARCHAR(255), nullable=True, unique=True
     )
     sent_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
+    # the time of the last attempt
     last_attempt_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
+    # when the next attempt will take place
     next_retry_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
     file_id: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
+
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("notification_batches.id"),
+        nullable=True,
+    )
 
 
 class NotificationAttempt(BaseModel):
@@ -132,4 +152,16 @@ class NotificationAttempt(BaseModel):
     finished_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
+    )
+
+
+class NotificationBatch(BaseModel):
+    __tablename__ = "notification_batches"
+
+    idempotency_key: Mapped[str | None] = mapped_column(
+        VARCHAR(255), nullable=True, unique=True
+    )
+    total: Mapped[int] = mapped_column(Integer)
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
     )
