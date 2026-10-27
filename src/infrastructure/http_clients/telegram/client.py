@@ -44,6 +44,7 @@ class TelegramClient(HTTPClient):
             msg=f"Transient Telegram API error: ({error_code}) on {method}"
             f"{payload.get('description', 'Unknown error')}",
             retry_after=self._retry_after(response, payload),
+            cause_type="TelegramAPIError",
         )
 
     async def send(self, notification_data: TelegramNotificationDTO) -> str:

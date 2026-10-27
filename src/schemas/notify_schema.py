@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypeAlias
 from uuid import UUID
 
 from pydantic import (
@@ -122,7 +122,7 @@ class SlackNotificationSchema(BaseNotificationSchema):
     file_id: str | None = None
 
 
-NotificationRequestSchema = Annotated[
+NotificationRequestSchema: TypeAlias = Annotated[
     EmailNotificationSchema | TelegramNotificationSchema | SlackNotificationSchema,
     Field(discriminator="type"),
 ]
@@ -145,17 +145,16 @@ class SendSlackMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
     notify_data: SlackNotificationSchema
 
 
-SendMessageToBrokerSchemaType = (
-    SendEmailMessageToBrokerSchema
-    | SendTelegramMessageToBrokerSchema
-    | SendSlackMessageToBrokerSchema
-)
+SendMessageToBrokerSchemaType: TypeAlias = Annotated[
+    EmailNotificationSchema | TelegramNotificationSchema | SlackNotificationSchema,
+    Field(discriminator="type"),
+]
 
 
-class DLQMessageSchema(BaseModel):
+class DLQMessageToBrokerSchema(BaseModel):
     original_data: dict
-    error: str
-    error_cause: str
+    error_message: str
+    error_full_cause: str
     source_stream: str
     failed_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
