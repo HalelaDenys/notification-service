@@ -36,4 +36,8 @@ async def get_notification_batch_service() -> AsyncGenerator[
         notification_service_factory=create_notification_service,
         batch_repo_factory=lambda session: NotificationBatchRepository(session),
         db_helper=db_helper,
+        broker_service=BrokerNotifyService(
+            broker=broker,
+            redis_client=redis_client,
+        ),
     )
