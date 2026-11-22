@@ -131,6 +131,7 @@ NotificationRequestSchema: TypeAlias = Annotated[
 # ================== WORKER REQUEST SCHEMAS ====================
 class BaseSendMessageToBrokerSchema(BaseModel):
     notify_id: UUID
+    notify_data: BaseModel
 
 
 class SendEmailMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
@@ -146,7 +147,9 @@ class SendSlackMessageToBrokerSchema(BaseSendMessageToBrokerSchema):
 
 
 SendMessageToBrokerSchemaType: TypeAlias = Annotated[
-    EmailNotificationSchema | TelegramNotificationSchema | SlackNotificationSchema,
+    SendEmailMessageToBrokerSchema
+    | SendTelegramMessageToBrokerSchema
+    | SendSlackMessageToBrokerSchema,
     Field(discriminator="type"),
 ]
 
@@ -216,7 +219,7 @@ class TelegramBatchNotificationRequestSchema(BaseBatchNotificationSchema):
     type: Literal["telegram"]
     reply_markup: InlineKeyboardMarkupSchema | ReplyKeyboardMarkupSchema | None = None
     recipients: Annotated[
-        list[TelegramBatchRecipientSchema], Field(min_length=1, max_length=10_000)
+        list[TelegramBatchRecipientSchema], Field(min_length=1, max_length=100_000)
     ]
 
     @field_validator("recipients")
