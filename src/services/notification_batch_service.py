@@ -1,4 +1,3 @@
-import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
@@ -18,6 +17,7 @@ from schemas.notify_schema import (
     SMTPBatchNotificationRequestSchema,
     TelegramBatchNotificationRequestSchema,
 )
+from services.broker_notify_service import BrokerNotifyService
 from services.notification_service import NotificationService
 
 
@@ -33,10 +33,12 @@ class NotificationBatchService:
             NotificationService,
         ],
         db_helper: DBHelper,
+        broker_service: BrokerNotifyService,
     ):
         self._batch_repo_factory = batch_repo_factory
         self._notification_service_factory = notification_service_factory
         self._db_helper = db_helper
+        self._broker_service = broker_service
 
     async def create_batch(
         self,
@@ -90,22 +92,21 @@ class NotificationBatchService:
                     )
                 raise RuntimeError("Failed to create or find notification batch")
 
-            start = time.perf_counter()
-            print("start: ", start)
             rows = self._build_notification_rows(batch_data, batch.id)
 
             n_service = self._notification_service_factory(session)
             inserted = await n_service.bulk_save_notifications(rows)
 
-            end = time.perf_counter()
-            print("end: ", end)
-            print("full time: ", end - start)
-            return BatchCreatedResponseSchema(
-                batch_id=batch.id,
-                total=inserted,
-                skipped_duplicates=len(rows) - inserted,
-                idempotent_replay=False,
-            )
+        # Потрібно зробити нагрузочное тестування перевірити як буде пацювати
+        # може потрібно обробляти фоном публікацію в брокер або винести всю функцію
+        await self._broker_service.batch_publish(data=batch_data, notify_id=batch.id)
+
+        return BatchCreatedResponseSchema(
+            batch_id=batch.id,
+            total=inserted,
+            skipped_duplicates=len(rows) - inserted,
+            idempotent_replay=False,
+        )
 
     async def get_status(self, batch_id: str | UUID) -> BatchStatusResponseSchema:
         """
@@ -212,7 +213,7 @@ class NotificationBatchService:
                     "batch_id": batch_id,
                     "channel": ChannelEnum.TELEGRAM.value,
                     "message": batch_data.message,
-                    "chat_id": str(r.chat_id),
+                    "recipient": str(r.chat_id),
                     "status": StatusEnum.PENDING.value,
                     "idempotency_key": f"{batch_id}:{r.chat_id}",
                 }
@@ -228,7 +229,7 @@ class NotificationBatchService:
                     "channel": ChannelEnum.SLACK.value,
                     "message": batch_data.message,
                     "status": StatusEnum.PENDING.value,
-                    "channel_id": str(r.channel_id),
+                    "recipient": str(r.channel_id),
                     "idempotency_key": f"{batch_id}:{r.channel_id}",
                 }
                 if r.file_id is not None:

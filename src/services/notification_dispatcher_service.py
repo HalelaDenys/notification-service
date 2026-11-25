@@ -110,7 +110,7 @@ class NotificationDispatcherService:
         self,
         payload,
         notify_data: NotificationRequestSchema,
-        broker_schema: type[SendMessageToBrokerSchemaType],
+        broker_schema: SendMessageToBrokerSchemaType,
     ) -> None:
         async with self._db_helper.get_session() as session:
             notification_service = self._notification_service_factory(session)

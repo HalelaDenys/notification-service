@@ -126,7 +126,7 @@ class NotificationService:
             )
         return notification
 
-    async def get_status_dlq(
+    async def set_status_dlq(
         self,
         notify_id: UUID,
         *,
@@ -166,8 +166,45 @@ class NotificationService:
             )
         return updated
 
-    async def schedule_retry(self, notify_id: UUID, *, error_massae) -> Notification:
-        pass
+    async def schedule_retry(
+        self,
+        notify_id: UUID,
+        *,
+        error_massage: str | None = None,
+        last_attempt_at: datetime,
+        next_retry_at: datetime,
+    ) -> Notification:
+        """
+        Record that this attempt failed but is retryable: go back to
+        PENDING so the relay republishes it once next_retry_at is due.
+
+        :param notify_id:  Unique ID of the notification to set.
+        :param error_massage: Error message for the notification
+        :param last_attempt_at: The time of the last attempt
+        :param next_retry_at: The time of the next attempt
+        :return:
+        """
+        notification = await self.get_notification(notify_id=notify_id)
+        if notification is None:
+            raise NotificationNotFoundError(
+                f"Notification {notify_id} not found",
+            )
+
+        updated = await self.update_notification(
+            notify_id=notify_id,
+            data={
+                "status": StatusEnum.PENDING.value,
+                "retry_count": notification.retry_count + 1,
+                "last_attempt_at": last_attempt_at,
+                "next_retry_at": next_retry_at,
+                "error_message": error_massage,
+            },
+        )
+        if updated is None:
+            raise NotificationNotFoundError(
+                f"Notification {notify_id} not found",
+            )
+        return updated
 
     async def bulk_save_notifications(self, rows: list[dict]) -> int:
         """

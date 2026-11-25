@@ -37,15 +37,17 @@ class TelegramNotifyService:
         """
         Sends an error message to the administrator.
 
-        :param error_message:  Error message to send to the administrator.
+        :param error_message: Error message to send to the administrator.
         :return: provider massage id
         """
         if settings.tg.admin_chat_id is None:
             raise TGAdminChatIdException("ADMIN_CHAT_ID is not configured.")
 
-        return await self._client._send_message(
-            chat_id=settings.tg.admin_chat_id,
-            text=error_message,
+        return await self._client.send(
+            notification_data=TelegramNotificationDTO(
+                chat_id=settings.tg.admin_chat_id,
+                text=error_message,
+            )
         )
 
     async def send_message(self, notify_data: TelegramNotificationSchema) -> str:
