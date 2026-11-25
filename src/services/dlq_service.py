@@ -2,12 +2,9 @@ from faststream.redis import RedisBroker
 
 from core.utils import get_error_cause
 from schemas.notify_schema import (
-    DLQMessageSchema,
-    EmailNotificationSchema,
-    TelegramNotificationSchema,
+    DLQMessageToBrokerSchema,
+    NotificationRequestSchema,
 )
-
-NotificationSchema = EmailNotificationSchema | TelegramNotificationSchema
 
 
 class DLQService:
@@ -16,16 +13,24 @@ class DLQService:
 
     async def publish_to_dlq(
         self,
-        data: NotificationSchema,
-        ecx: Exception,
+        notify_data: NotificationRequestSchema,
+        error: Exception,
         stream_name: str,
     ) -> None:
+        """
+        Publish a failed notification to the dead-letter stream.
+
+        :param notify_data: Original notification request data.
+        :param error: Exception that caused the notification delivery to fail.
+        :param stream_name: Name of the original notification stream.
+        :return: None.
+        """
         await self._broker.publish(
-            DLQMessageSchema(
-                original_data=data.model_dump(),
+            DLQMessageToBrokerSchema(
+                original_data=notify_data.model_dump(),
                 source_stream=stream_name,
-                error=str(ecx),
-                error_cause=get_error_cause(ecx),
+                error_message=str(error),
+                error_full_cause=get_error_cause(error),
             ),
             stream=f"{stream_name}.dlq",
         )

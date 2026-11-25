@@ -6,8 +6,7 @@ from faststream import FastStream
 from faststream.redis import StreamSub
 
 from core import settings
-from core.exceptions import RetryException, TelegramException
-from core.utils import get_error_cause
+from core.exceptions import TelegramTransientError
 from infrastructure import create_redis_broker, db_helper, redis_client
 from schemas.notify_schema import SendTelegramMessageToBrokerSchema
 from services.dlq_service import DLQService
@@ -17,7 +16,7 @@ from services.factory import (
 )
 
 logging.basicConfig(
-    level=settings.logging.log_level_value,
+    level=logging.DEBUG,
     format=settings.logging.log_format,
 )
 
@@ -32,6 +31,13 @@ app = FastStream(broker)
 
 service = create_telegram_notify_service()
 dlq_service = DLQService(broker=broker)
+
+delivery_service = create_notification_delivery_service(
+    retryable_exceptions=(TelegramTransientError,),
+    db_helper=db_helper,
+    dlq_service=dlq_service,
+    stream_name=STREAM_NAME,
+)
 
 
 @app.on_startup
@@ -61,37 +67,13 @@ async def tg_worker(notification_data: SendTelegramMessageToBrokerSchema) -> Non
     :return: None
     """
     try:
-        deliver_service = create_notification_delivery_service(
-            exceptions=(TelegramException,),
-            db_helper=db_helper,
+        await delivery_service.deliver_notification(
+            notify_data=notification_data,
+            send_func=lambda: service.send(notification_data.notify_data),
         )
-
-        try:
-            await deliver_service.deliver_notification(
-                notify_data=notification_data,
-                send_func=lambda: service.send(notification_data.notify_data),
-            )
-        except RetryException as exc:
-            logger.error(
-                "Telegram delivery failed after retries: chat_id=%s cause=%s",
-                notification_data.notify_data.chat_id,
-                get_error_cause(exc),
-                exc_info=True,
-            )
-
-            try:
-                await dlq_service.publish_to_dlq(
-                    data=notification_data, ecx=exc, stream_name=STREAM_NAME
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to publish to DLQ: chat_id=%s",
-                    notification_data.notify_data.chat_id,
-                )
-                raise
     except Exception:
         logger.exception(
-            "Unexpected telegram worker error: chat_id=%s",
+            "Unexpected Telegram worker error: chat_id=%s",
             notification_data.notify_data.chat_id,
         )
         raise

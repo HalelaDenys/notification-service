@@ -5,9 +5,9 @@ import socket
 from faststream import FastStream
 from faststream.redis import StreamSub
 
-from core import get_error_cause, settings
-from core.exceptions import RetryException, SMTPClientException
-from infrastructure import create_redis_broker, db_helper
+from core import settings
+from core.exceptions import SMTPTransientError
+from infrastructure import create_redis_broker, db_helper, redis_client
 from schemas.notify_schema import (
     SendEmailMessageToBrokerSchema,
 )
@@ -34,6 +34,23 @@ app = FastStream(broker)
 service = create_smtp_notify_service()
 dlq_service = DLQService(broker=broker)
 
+delivery_service = create_notification_delivery_service(
+    retryable_exceptions=(SMTPTransientError,),
+    db_helper=db_helper,
+    dlq_service=dlq_service,
+    stream_name=STREAM_NAME,
+)
+
+
+@app.on_startup
+async def startup():
+    await redis_client.connect()
+
+
+@app.on_shutdown
+async def shutdown():
+    await redis_client.disconnect()
+
 
 @broker.subscriber(
     stream=StreamSub(
@@ -53,35 +70,10 @@ async def smtp_worker(notification_data: SendEmailMessageToBrokerSchema) -> None
     """
 
     try:
-        deliver_service = create_notification_delivery_service(
-            exceptions=(SMTPClientException,),
-            db_helper=db_helper,
+        await delivery_service.deliver_notification(
+            notify_data=notification_data,
+            send_func=lambda: service.send(notification_data.notify_data),
         )
-
-        try:
-            await deliver_service.deliver_notification(
-                notify_data=notification_data,
-                send_func=lambda: service.send(notification_data.notify_data),
-            )
-        except RetryException as exc:
-            logger.error(
-                "Email delivery failed after retries: recipient=%s cause=%s",
-                notification_data.notify_data.recipient,
-                get_error_cause(exc),
-                exc_info=True,
-            )
-
-            try:
-                await dlq_service.publish_to_dlq(
-                    data=notification_data, ecx=exc, stream_name=STREAM_NAME
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to publish to DLQ: recipient=%s",
-                    notification_data.notify_data.recipient,
-                )
-                raise
-
     except Exception:
         logger.exception(
             "Unexpected smtp worker error: recipient=%s",
